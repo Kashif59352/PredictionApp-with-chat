@@ -1,4 +1,29 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- <manifest xmlns:android="http://schemas.android.com/apk/res/android"> -->
+ <!-- ✅ Gallery Permission (Android 13+) -->
+    <!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/> -->
+    <!-- ✅ For Android 12 and below -->
+    <!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/> -->
+    <!-- <uses-permission android:name="android.permission.INTERNET"/> -->
+<!-- <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" -->
+    <!-- android:maxSdkVersion="28"/> -->
+<!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/> -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.fypproject">
+
+    <!-- For reading images in Android 13+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+
+    <!-- For Android 12 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
+
+    <!-- Optional for Android 11+ if you want full storage access -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+    <!-- Internet (for HTTP requests) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="fypproject"
         android:name="${applicationName}"

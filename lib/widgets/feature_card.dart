@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fypproject/main.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 
@@ -70,6 +71,7 @@ class _FeatureCardState extends State<FeatureCard>
 
   @override
   Widget build(BuildContext context) {
+    np = MediaQuery.of(context).size;
     return AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) {
@@ -126,8 +128,8 @@ class _FeatureCardState extends State<FeatureCard>
                       widget.title,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                        fontSize: np.width * .03,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.darkGray,
                         height: 1.2,
                       ),
@@ -135,15 +137,16 @@ class _FeatureCardState extends State<FeatureCard>
                     const SizedBox(height: 4),
 
                     // Subtitle
-                    Text(
-                      widget.subtitle,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.roboto(
-                        fontSize: 11,
-                        color: AppColors.mediumGray,
-                        height: 1.2,
-                      ),
-                    ),
+                    // Text(
+                    //   widget.subtitle,
+                    //   textAlign: TextAlign.center,
+                    //   style: GoogleFonts.roboto(
+                    //     fontSize: np.width * .03,
+                    //     // color: AppColors.mediumGray,
+                    //     color: Colors.black,
+                    //     height: 1.2,
+                    //   ),
+                    // ),
                   ],
                 ),
               ),

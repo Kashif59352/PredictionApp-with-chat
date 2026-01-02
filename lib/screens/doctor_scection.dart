@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fypproject/api/apis.dart';
+import 'package:fypproject/api/storage.dart';
 import 'package:fypproject/module/chat_user.dart';
 import 'package:fypproject/screens/auth/login_screen.dart';
 import 'package:fypproject/screens/profile_screen.dart';
@@ -93,6 +94,7 @@ class _AboutScreenState extends State<DoctorSection> {
           floatingActionButton: FloatingActionButton(
             onPressed: () async {
               GoogleSignIn.instance.signOut();
+              Storage().logOut();
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (ctx) => LoginScreen()),

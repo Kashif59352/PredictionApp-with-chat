@@ -1,8 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fypproject/api/storage.dart';
 import 'package:fypproject/firebase_options.dart';
-import 'package:fypproject/screens/auth/login_screen.dart';
+import 'package:fypproject/screens/home_screen.dart';
+import 'package:fypproject/screens/splash_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'utils/app_colors.dart';
 
@@ -10,11 +12,15 @@ late Size np;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const CADDiagnosisApp());
+  final storageCall = Storage();
+  await storageCall.init();
+
+  runApp(CADDiagnosisApp(checkLogin: storageCall.isLogin));
 }
 
 class CADDiagnosisApp extends StatelessWidget {
-  const CADDiagnosisApp({super.key});
+  final bool checkLogin;
+  const CADDiagnosisApp({super.key, required this.checkLogin});
 
   @override
   Widget build(BuildContext context) {
@@ -66,10 +72,9 @@ class CADDiagnosisApp extends StatelessWidget {
           shadowColor: Colors.black26,
         ),
       ),
- 
-      home: LoginScreen(),
+
+      home: SplashScreen(),
+      //  checkLogin ? HomeScreen() : LoginScreen(),
     );
   }
-
- 
 }

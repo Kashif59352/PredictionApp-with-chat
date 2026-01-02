@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fypproject/screens/auth/login_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
-
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -24,28 +24,23 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
 
     // Navigate to home screen after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        // NavigationService.navigateToAndReplace('/home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (ctx) => LoginScreen()),
+        );
       }
     });
   }
@@ -60,9 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.primaryGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         child: SafeArea(
           child: Center(
             child: Column(
@@ -98,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
                   },
                 ),
                 const SizedBox(height: 40),
-                
+
                 // App Title
                 AnimatedBuilder(
                   animation: _fadeAnimation,
@@ -131,7 +124,7 @@ class _SplashScreenState extends State<SplashScreen>
                   },
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Subtitle
                 AnimatedBuilder(
                   animation: _fadeAnimation,
@@ -151,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen>
                   },
                 ),
                 const SizedBox(height: 60),
-                
+
                 // Loading Indicator
                 AnimatedBuilder(
                   animation: _fadeAnimation,

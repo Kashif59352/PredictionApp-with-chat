@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fypproject/Dialogs/dialogs.dart';
 import 'package:fypproject/api/apis.dart';
+import 'package:fypproject/api/storage.dart';
 import 'package:fypproject/screens/auth/signup_screen.dart';
 import 'package:fypproject/screens/home_screen.dart';
 import 'package:fypproject/utils/responsive_helper.dart';
@@ -49,10 +50,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   handeleSignIn() async {
     signInWithGoogle().then((user) async {
+      Dialogs.showPrograssBar(context);
       if (user != null) {
         log("User Info : ${user.additionalUserInfo}");
 
         if ((await APIs.userExist())) {
+          Storage().setLogin(val: (await APIs.userExist()));
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (ctx) => HomeScreen()),
@@ -98,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.lightGray,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text("Sign In"),
         backgroundColor: AppColors.primaryBlue,
         centerTitle: true,

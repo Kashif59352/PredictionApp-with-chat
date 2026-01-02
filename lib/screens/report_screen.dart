@@ -1,85 +1,554 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../utils/app_colors.dart';
+import 'package:fypproject/api/save_pdf_data.dart';
+import 'package:fypproject/main.dart';
+import 'package:fypproject/module/pdf_model.dart';
+import 'package:fypproject/screens/genrate_pdf.dart';
+import 'package:fypproject/screens/upload_diagnosis_screen.dart';
+import 'package:fypproject/utils/app_colors.dart';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 
 class ReportScreen extends StatefulWidget {
-  const ReportScreen({super.key});
+  final PdfModel pdfData;
+
+  const ReportScreen({super.key, required this.pdfData});
 
   @override
   State<ReportScreen> createState() => _ReportScreenState();
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  // Sample report data
-  final Map<String, dynamic> _reportData = {
-    'patientId': 'P-2024-001',
-    'patientName': 'John Doe',
-    'age': 58,
-    'gender': 'Male',
-    'analysisDate': '2024-01-15',
-    'analysisTime': '14:30',
-    'cadDetected': true,
-    'confidence': 0.87,
-    'riskLevel': 'High',
-    'stenosis': '75-85%',
-    'affectedVessels': ['LAD', 'RCA'],
-    'recommendations': [
-      'Immediate cardiology consultation recommended',
-      'Consider coronary angioplasty or bypass surgery',
-      'Lifestyle modifications: diet and exercise',
-      'Regular monitoring and follow-up required',
-    ],
-  };
+  List<Map<String, dynamic>> conditionData = [
+    {
+      "severe": Text(
+        ' AI analysis indicates a severe stenotic region with significant vessel'
+        'narrowing.This case is marked as high priority and requires immediate'
+        'clinical review.The result is AI-assisted and should be confirmed by a '
+        'cardiologist using standard diagnostic procedures.',
+      ),
+    },
+    {
+      "moderate": Text(
+        'AI analysis suggests a moderate level of coronary stenosis.Clinical correlation'
+        'and further diagnostic evaluation are recommended. This AI-based assessment is '
+        'intended to support, not replace, expert medical judgment.',
+      ),
+    },
+    {
+      "mild": Text(
+        'AI analysis indicates mild or no significant coronary stenosis. No urgent intervention'
+        'is suggested based on this automated assessment. Final interpretation should be performed'
+        ' by a qualified medical professional.',
+      ),
+    },
+  ];
+
+  pw.ImageProvider? urlImage;
+  bool isLoad = false;
+  String url =
+      "https://expertcardiologist.co.uk/wp-content/uploads/bb-plugin/cache/adobestock_416300963-circle-9251c52126b153d9e9f61595d08102db-1e6rowas79bq.webp";
+  @override
+  void initState() {
+    super.initState();
+    loadImage(url);
+  }
+
+  Future<void> loadImage(String url) async {
+    final response = await http.get(Uri.parse(url));
+    urlImage = pw.MemoryImage(response.bodyBytes);
+  }
+
+  Future<pw.ImageProvider> loadAssetImage(String path) async {
+    final data = await rootBundle.load(path);
+    return pw.MemoryImage(data.buffer.asUint8List());
+  }
+
+  Future<void> sharePdf() async {
+    final pdfBytes = await generateReportPdf();
+
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: 'CAD_Report_${widget.pdfData.patientId}.pdf',
+    );
+  }
+
+  void showPdf() async {
+    final bytes = await generateReportPdf();
+    Printing.layoutPdf(onLayout: (format) async => bytes);
+  }
+
+  Future<Uint8List> generateReportPdf(
+    //   {
+    //   required String paitentId,
+    //   required String responseId,
+    //   required String dateAndTime,
+    //   required String modelVersion,
+    //   required String scoreTherishold,
+    // }
+  ) async {
+    final pdf = pw.Document();
+    final headerImage = await loadAssetImage("assets/Report_header.png");
+    final inPutImage = await loadAssetImage("assets/input.jpeg");
+    final outPutImage1 = await loadAssetImage("assets/output1.jpeg");
+    final outPutImage2 = await loadAssetImage("assets/output2.jpeg");
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.only(left: 32, right: 32, bottom: 32, top: 20),
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              /// HEADER
+              pw.Container(
+                height: 80,
+                // color: PdfColors.blue100,
+                decoration: pw.BoxDecoration(
+                  image: pw.DecorationImage(
+                    image: headerImage,
+                    fit: pw.BoxFit.fill,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 5),
+
+              reportDetailsHeaderPDF("Report Details"),
+              pw.SizedBox(height: 5),
+
+              /// GRADING SECTION
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: pw.Text(
+                      'Patient ID: \n'
+                      'Request ID: \n'
+                      'Date & Time: \n'
+                      'Model Version: \n'
+                      'Score Threshold: \n',
+                    ),
+                  ),
+                  // changing this section
+                  pw.Expanded(
+                    child: pw.Text(
+                      'Distinction\n'
+                      'Merit\n'
+                      'Pass\n'
+                      'Narrow Fail\n'
+                      'Fail',
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              reportDetailsHeaderPDF("Section: Input Angiogram"),
+              pw.SizedBox(height: 5),
+
+              // pw.Text('Pass With Merit'),
+              pw.Container(
+                // width: 400,
+                height: 100,
+                width: 200,
+                decoration: pw.BoxDecoration(
+                  // border: pw.Border.all(width: 2),
+                  image: pw.DecorationImage(
+                    image: inPutImage,
+                    fit: pw.BoxFit.fill,
+                  ),
+                ),
+              ),
+
+              pw.SizedBox(height: 10),
+              reportDetailsHeaderPDF("Section: AI Prediction Overlay"),
+
+              pw.SizedBox(height: 10),
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: pw.Container(
+                      // width: 400,
+                      height: 100,
+                      decoration: pw.BoxDecoration(
+                        // border: pw.Border.all(width: 2),
+                        image: pw.DecorationImage(
+                          image: outPutImage1,
+                          fit: pw.BoxFit.fill,
+                        ),
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(width: 10),
+                  pw.Expanded(
+                    child: pw.Container(
+                      // width: 400,
+                      height: 100,
+                      decoration: pw.BoxDecoration(
+                        // border: pw.Border.all(width: 2),
+                        image: pw.DecorationImage(
+                          image: outPutImage2,
+                          fit: pw.BoxFit.fill,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 10),
+              reportDetailsHeaderPDF(
+                "Section: Explainable AI  Occlusion Sensitivity",
+              ),
+
+              pw.SizedBox(height: 10),
+              pw.Text(
+                'Explanation text (important):',
+                style: pw.TextStyle(
+                  fontSize: 13,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                'The occlusion heatmap illustrates image regions that most influenced the model prediction./n'
+                'Warmer colors indicate higher contribution to the final decision.',
+              ),
+              pw.SizedBox(height: 10),
+              reportDetailsHeaderPDF(
+                "Section: Severity Estimation (Pixel-Based)",
+              ),
+
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: pw.Text(
+                      'Parameter',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                  pw.Expanded(
+                    child: pw.Text(
+                      'Value',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: pw.Text(
+                      'Number of detected regions\n'
+                      'Highest confidence score\n'
+                      'Maximum estimated width (pixels)\n'
+                      'Severity Category',
+                    ),
+                  ),
+                  pw.Expanded(
+                    child: pw.Text(
+                      '1\n'
+                      '0.987\n'
+                      '13.37px\n'
+                      'Sever',
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 5),
+
+              pw.Container(
+                height: 90,
+                width: double.infinity,
+                decoration: pw.BoxDecoration(
+                  // border: pw.Border.all(width: 2),
+                  gradient: pw.RadialGradient(
+                    colors: [PdfColors.blue200, PdfColors.blue100],
+                  ),
+                ),
+                child: pw.Padding(
+                  padding: pw.EdgeInsets.all(10),
+                  child: pw.Column(
+                    mainAxisAlignment: pw.MainAxisAlignment.start,
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Disclaimer & Clinical Note',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      pw.SizedBox(height: 5),
+
+                      pw.Text(
+                        'This is NOT Quantitative Coronary Angiography (QCA)',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+
+                      pw.Text(
+                        'Results should NOT be used as a sole diagnostic decision',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+
+                      pw.Text(
+                        'Clinical validation by a qualified cardiologist is required',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
 
   @override
   Widget build(BuildContext context) {
+    np = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Diagnosis Report'),
         backgroundColor: AppColors.primaryBlue,
         actions: [
           IconButton(
-            onPressed: _generatePDF,
+            onPressed: () {},
+            //  _generatePDF,
             icon: const Icon(Icons.picture_as_pdf),
             tooltip: 'Generate PDF',
           ),
           IconButton(
-            onPressed: _shareReport,
+            onPressed: () {},
+            //  _shareReport,
             icon: const Icon(Icons.share),
             tooltip: 'Share Report',
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Report Header
-            _buildReportHeader(),
-            const SizedBox(height: 20),
+            reportDetailsHeader("Report Details"),
+            SizedBox(height: 5),
 
-            // Patient Information
-            _buildPatientInfo(),
-            const SizedBox(height: 20),
+            /// GRADING SECTION
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Patient ID: \n'
+                    'Request ID: \n'
+                    'Date & Time: \n'
+                    'Model Version: \n'
+                    'Score Threshold: \n',
+                  ),
+                ),
+                // changing this section
+                Expanded(
+                  child: Text(
+                    '${widget.pdfData.patientId}\n'
+                    '${widget.pdfData.requestId}\n'
+                    '10-12-2026\n'
+                    'Narrow Fail\n'
+                    '${widget.pdfData.scoreThr}',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            reportDetailsHeader("Section: Input Angiogram"),
+            SizedBox(height: 5),
 
-            // Analysis Results
-            _buildAnalysisResults(),
-            const SizedBox(height: 20),
+            // Text('Pass With Merit'),
+            Container(
+              // width: 400,
+              height: 100,
+              width: 200,
+              decoration: BoxDecoration(
+                border: Border.all(width: 2),
+                // After Add
+                image: DecorationImage(
+                  image: AssetImage("${widget.pdfData.files!.input}"),
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
 
-            // Detailed Findings
-            _buildDetailedFindings(),
-            const SizedBox(height: 20),
+            SizedBox(height: 10),
+            reportDetailsHeader("Section: AI Prediction Overlay"),
 
-            // Recommendations
-            _buildRecommendations(),
-            const SizedBox(height: 20),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 100,
+                    decoration: BoxDecoration(
+                      border: Border.all(width: 2),
+                      // After add
+                      image: DecorationImage(
+                        image: AssetImage(
+                          widget.pdfData.files!.panels!.elementAt(0),
+                        ),
+                        // outPutImage1,
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    // width: 400,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      border: Border.all(width: 2),
+                      // after Add
+                      image: DecorationImage(
+                        image: AssetImage(
+                          widget.pdfData.files!.panels!.elementAt(1),
+                        ),
+                        // outPutImage2,
+                        fit: BoxFit.fill,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
 
-            // AI Model Information
-            _buildModelInfo(),
-            const SizedBox(height: 30),
+            SizedBox(height: 10),
+            reportDetailsHeader(
+              "Section: Explainable AI  Occlusion Sensitivity",
+            ),
 
-            // Action Buttons
+            SizedBox(height: 10),
+            Text(
+              'Explanation text (important):',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+
+            if (widget.pdfData.severity!.severityLabel == "severe")
+              conditionData[0]["severe"],
+            if (widget.pdfData.severity!.severityLabel == "moderate")
+              conditionData[1]["moderate"],
+            if (widget.pdfData.severity!.severityLabel == "mild")
+              conditionData[2]["mild"],
+            SizedBox(height: 10),
+            reportDetailsHeader("Section: Severity Estimation (Pixel-Based)"),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Parameter',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Value',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Number Predict\n'
+                    'Highest confidence score\n'
+                    'Maximum estimated width (pixels)\n'
+                    'Severity Category',
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    '${widget.pdfData.severity!.numPreds}\n'
+                    '${widget.pdfData.severity!.bestScore!.toStringAsFixed(2)}\n'
+                    '${widget.pdfData.severity!.maxWidthPx!.toStringAsFixed(2)}\n'
+                    '${widget.pdfData.severity!.severityLabel}',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 5),
+            Container(
+              height: np.height * .15,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                // border: Border.all(width: 2),
+                gradient: RadialGradient(
+                  colors: [Colors.blue.shade200, Colors.blue.shade100],
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Disclaimer & Clinical Note',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+
+                    Text(
+                      'This is NOT Quantitative Coronary Angiography (QCA)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+
+                    Text(
+                      'Results should NOT be used as a sole diagnostic decision',
+                      style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+
+                    Text(
+                      'Clinical validation by a qualified cardiologist is required',
+                      style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
             _buildActionButtons(),
           ],
         ),
@@ -87,432 +556,32 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  Widget _buildReportHeader() {
+  // report header
+  Widget reportDetailsHeader(String title) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      height: 25,
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.medical_services, color: Colors.white, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                'CAD Diagnosis Report',
-                style: GoogleFonts.roboto(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'AI-Powered Coronary Artery Disease Analysis',
-            style: GoogleFonts.roboto(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                Icons.access_time,
-                color: Colors.white.withOpacity(0.8),
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Generated: ${_reportData['analysisDate']} at ${_reportData['analysisTime']}',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatientInfo() {
-    return _buildSectionCard(
-      title: 'Patient Information',
-      icon: Icons.person,
-      child: Column(
-        children: [
-          _buildInfoRow('Patient ID', _reportData['patientId']),
-          _buildInfoRow('Name', _reportData['patientName']),
-          _buildInfoRow('Age', '${_reportData['age']} years'),
-          _buildInfoRow('Gender', _reportData['gender']),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalysisResults() {
-    final bool cadDetected = _reportData['cadDetected'];
-    final double confidence = _reportData['confidence'];
-
-    return _buildSectionCard(
-      title: 'Analysis Results',
-      icon: Icons.analytics,
-      child: Column(
-        children: [
-          // Main Result
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cadDetected
-                      ? AppColors.medicalRed.withOpacity(0.1)
-                      : AppColors.successGreen.withOpacity(0.1),
-                  Colors.white,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cadDetected
-                    ? AppColors.medicalRed.withOpacity(0.3)
-                    : AppColors.successGreen.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  cadDetected ? Icons.warning : Icons.check_circle,
-                  color: cadDetected
-                      ? AppColors.medicalRed
-                      : AppColors.successGreen,
-                  size: 32,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cadDetected ? 'CAD DETECTED' : 'NO CAD DETECTED',
-                        style: GoogleFonts.roboto(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: cadDetected
-                              ? AppColors.medicalRed
-                              : AppColors.successGreen,
-                        ),
-                      ),
-                      Text(
-                        'Confidence: ${(confidence * 100).toInt()}%',
-                        style: GoogleFonts.roboto(
-                          fontSize: 14,
-                          color: AppColors.mediumGray,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Confidence Meter
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Confidence Level',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkGray,
-                ),
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: confidence,
-                backgroundColor: AppColors.lightGray,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  confidence > 0.8
-                      ? AppColors.successGreen
-                      : confidence > 0.6
-                      ? AppColors.warningOrange
-                      : AppColors.medicalRed,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${(confidence * 100).toInt()}% - ${_getConfidenceLabel(confidence)}',
-                style: GoogleFonts.roboto(
-                  fontSize: 12,
-                  color: AppColors.mediumGray,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailedFindings() {
-    if (!_reportData['cadDetected']) {
-      return _buildSectionCard(
-        title: 'Detailed Findings',
-        icon: Icons.search,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.successGreen.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.check_circle,
-                color: AppColors.successGreen,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'No significant coronary artery disease detected. Coronary arteries appear normal.',
-                  style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    color: AppColors.darkGray,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        gradient: LinearGradient(
+          colors: [
+            Colors.blue.shade100,
+            Colors.blue.shade200,
+            Colors.blue.shade300,
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-      );
-    }
-
-    return _buildSectionCard(
-      title: 'Detailed Findings',
-      icon: Icons.search,
-      child: Column(
-        children: [
-          _buildFindingItem(
-            'Risk Level',
-            _reportData['riskLevel'],
-            _getRiskColor(_reportData['riskLevel']),
-            Icons.warning,
-          ),
-          const SizedBox(height: 12),
-          _buildFindingItem(
-            'Stenosis Severity',
-            _reportData['stenosis'],
-            AppColors.medicalRed,
-            Icons.timeline,
-          ),
-          const SizedBox(height: 12),
-          _buildFindingItem(
-            'Affected Vessels',
-            _reportData['affectedVessels'].join(', '),
-            AppColors.warningOrange,
-            Icons.device_hub,
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _buildFindingItem(
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: AppColors.mediumGray,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkGray,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecommendations() {
-    return _buildSectionCard(
-      title: 'Clinical Recommendations',
-      icon: Icons.medical_services_rounded,
-      child: Column(
-        children: _reportData['recommendations'].asMap().entries.map<Widget>((
-          entry,
-        ) {
-          int index = entry.key;
-          String recommendation = entry.value;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${index + 1}',
-                      style: GoogleFonts.roboto(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    recommendation,
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      color: AppColors.darkGray,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildModelInfo() {
-    return _buildSectionCard(
-      title: 'AI Model Information',
-      icon: Icons.psychology,
-      child: Column(
-        children: [
-          _buildInfoRow('Model Architecture', 'ResNet50'),
-          _buildInfoRow('Explainability Method', 'Grad-CAM'),
-          _buildInfoRow('Training Dataset', 'Medical Angiogram Database'),
-          _buildInfoRow('Model Version', 'v2.1.0'),
-          _buildInfoRow('Processing Time', '< 2 seconds'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.primaryBlue, size: 24),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: GoogleFonts.roboto(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkGray,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+          // Title text
           Text(
-            label,
-            style: GoogleFonts.roboto(
-              fontSize: 14,
-              color: AppColors.mediumGray,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.roboto(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkGray,
+            title,
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -527,19 +596,62 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _generatePDF,
+                onPressed: () async {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Saving PDF...")),
+                  );
+
+                  final pdfBytes = await generateReportPdf();
+                  final filePath = await SavePdfData.savePdfToStorage(
+                    pdfBytes,
+                    "CAD_REPORT_${widget.pdfData.patientId}",
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("PDF saved at $filePath")),
+                  );
+
+                  // Navigate to saved PDFs screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => GenratePdf()),
+                  );
+                },
                 icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Generate PDF'),
+                label: const Text('Save PDF'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.medicalRed,
+                  backgroundColor: Colors.red,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
+
+              // ElevatedButton.icon(
+              //   onPressed: () async {
+              //     ScaffoldMessenger.of(
+              //       context,
+              //     ).showSnackBar(SnackBar(content: Text("Save Pdf")));
+              //     // showPdf();
+              //     final pdfBytes = await generateReportPdf();
+              //     await SavePdfData.savePdfToStorage(
+              //       pdfBytes,
+              //       "CAD_REPORT_${widget.pdfData.patientId}",
+              //     );
+              //   },
+
+              //   icon: const Icon(Icons.picture_as_pdf),
+              //   label: const Text('Save PDF'),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: AppColors.medicalRed,
+              //     padding: const EdgeInsets.symmetric(vertical: 12),
+              //   ),
+              // ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _shareReport,
+                onPressed: () async {
+                  await sharePdf();
+                },
                 icon: const Icon(Icons.share),
                 label: const Text('Share Report'),
                 style: ElevatedButton.styleFrom(
@@ -555,7 +667,10 @@ class _ReportScreenState extends State<ReportScreen> {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
-              // Navigator.pushNamed(context, '/upload');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (ctx) => UploadDiagnosisScreen()),
+              );
             },
             icon: const Icon(Icons.add),
             label: const Text('New Analysis'),
@@ -569,52 +684,31 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  String _getConfidenceLabel(double confidence) {
-    if (confidence >= 0.9) return 'Very High';
-    if (confidence >= 0.8) return 'High';
-    if (confidence >= 0.7) return 'Good';
-    if (confidence >= 0.6) return 'Moderate';
-    return 'Low';
-  }
-
-  Color _getRiskColor(String riskLevel) {
-    switch (riskLevel.toLowerCase()) {
-      case 'high':
-        return AppColors.medicalRed;
-      case 'medium':
-        return AppColors.warningOrange;
-      case 'low':
-        return AppColors.successGreen;
-      default:
-        return AppColors.mediumGray;
-    }
-  }
-
-  void _generatePDF() {
-    // Placeholder for PDF generation
-    // NavigationService.showInfoSnackBar('PDF generation feature coming soon!');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('PDF report generated successfully!'),
-        backgroundColor: AppColors.successGreen,
-        action: SnackBarAction(
-          label: 'View',
-          textColor: Colors.white,
-          onPressed: () {
-            // Open PDF viewer
-          },
+  // report header
+  pw.Widget reportDetailsHeaderPDF(String title) {
+    return pw.Container(
+      height: 25,
+      decoration: pw.BoxDecoration(
+        gradient: pw.LinearGradient(
+          colors: [PdfColors.blue800, PdfColors.blue500, PdfColors.blue300],
+          begin: pw.Alignment.centerLeft,
+          end: pw.Alignment.centerRight,
         ),
       ),
-    );
-  }
-
-  void _shareReport() {
-    // Placeholder for sharing functionality
-    // NavigationService.showInfoSnackBar('Report sharing feature coming soon!');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Report shared successfully!'),
-        backgroundColor: AppColors.primaryBlue,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 5),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          // Title text
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              color: PdfColors.white,
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

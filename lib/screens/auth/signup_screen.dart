@@ -69,6 +69,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: AppColors.lightGray,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text("Create Account"),
         backgroundColor: AppColors.primaryBlue,
         centerTitle: true,

@@ -1,16 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:fypproject/Dialogs/dialogs.dart';
+import 'package:fypproject/module/pdf_model.dart';
 import 'package:fypproject/screens/doctor_scection.dart';
+import 'package:fypproject/screens/genrate_pdf.dart';
+import 'package:fypproject/screens/report_screen.dart';
+import 'package:fypproject/screens/upload_diagnosis_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../widgets/feature_card.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  HomeScreen({super.key});
+
+  PdfModel? pdfData;
+  // PdfModel(
+  //   ok: true,
+  //   requestId: "baf37572",
+  //   patientId: "kashif_001",
+  //   scoreThr: 0.4,
+  //   severity: Severity(
+  //     numPreds: 1,
+  //     bestScore: 0.9870097637176514,
+  //     maxWidthPx: 13.370025634765625,
+  //     severityLabel: "mild",
+  //     note:
+  //         "Pixel-based severity is an approximation (not QCA). Doctor validation required.",
+  //   ),
+  //   files: Files(
+  //     input: "assets/input.jpeg",
+  //     predictionJson: "/outputs/job_20260101_174524_baf37572/prediction.json",
+  //     pdf: null,
+  //     xai: [],
+  //     panels: ["assets/output1.jpeg", "assets/output2.jpeg"],
+  //   ),
+  // );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('CAD Diagnosis Assistant'),
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
@@ -105,28 +134,55 @@ class HomeScreen extends StatelessWidget {
                         title: 'Upload X-ray\nAngiogram',
                         subtitle: 'Select and analyze\nmedical images',
                         color: AppColors.primaryBlue,
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) => UploadDiagnosisScreen(),
+                            ),
+                          );
+                        },
+
                         // => NavigationService.navigateTo('/upload'),
                       ),
+
                       FeatureCard(
                         icon: Icons.assessment,
                         title: 'View Diagnosis\nReport',
                         subtitle: 'Check analysis\nresults',
                         color: AppColors.medicalRed,
-                        onTap: () {},
-                        // => NavigationService.navigateTo('/report'),
+                        onTap: () {
+                          if (pdfData != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (ctx) =>
+                                    ReportScreen(pdfData: pdfData!),
+                              ),
+                            );
+                          } else {
+                            Dialogs.showAlert("Not Analysis X-ray", context);
+                            // ScaffoldMessenger.of(context).showSnackBar(
+                            //   SnackBar(content: Text("Not Doing Diagnose")),
+                            // );
+                          }
+                        },
                       ),
                       FeatureCard(
                         icon: Icons.picture_as_pdf,
-                        title: 'Generate PDF\nReport',
+                        title: 'Save All Reports\nReport',
                         subtitle: 'Export detailed\nreports',
                         color: AppColors.successGreen,
-                        onTap: () {},
-                       
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (ctx) => GenratePdf()),
+                          );
+                        },
                       ),
                       FeatureCard(
-                        icon: Icons.info_outline,
-                        title: 'All Doctors',
+                        icon: Icons.chat,
+                        title: 'Expert Communication',
                         subtitle: 'Reference Section',
                         color: AppColors.warningOrange,
                         onTap: () {
