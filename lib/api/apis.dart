@@ -4,6 +4,7 @@ import 'package:fypproject/module/chat_user.dart';
 import 'package:fypproject/module/message.dart';
 
 class APIs {
+  static const String modelUrl = "https://tearless-blowziest-marianela.ngrok-free.dev/analyze";
   static FirebaseAuth auth = FirebaseAuth.instance;
 
   static FirebaseFirestore firestore = FirebaseFirestore.instance;

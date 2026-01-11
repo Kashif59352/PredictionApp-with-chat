@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fypproject/api/storage.dart';
 import 'package:fypproject/firebase_options.dart';
-import 'package:fypproject/screens/home_screen.dart';
 import 'package:fypproject/screens/splash_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'utils/app_colors.dart';
@@ -14,7 +13,20 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final storageCall = Storage();
   await storageCall.init();
+ SystemChrome.setSystemUIOverlayStyle(
+  const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ),
+);
 
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(CADDiagnosisApp(checkLogin: storageCall.isLogin));
 }
 
@@ -43,17 +55,6 @@ class CADDiagnosisApp extends StatelessWidget {
         primaryColor: AppColors.primaryBlue,
         scaffoldBackgroundColor: AppColors.backgroundWhite,
         textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme),
-        appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: GoogleFonts.roboto(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryBlue,

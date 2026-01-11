@@ -1,11 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:fypproject/module/upload_model.dart';
+import 'package:fypproject/api/apis.dart';
+import 'package:fypproject/module/pdf_model.dart';
+import 'package:fypproject/module/upload_data/post_data.dart';
+import 'package:fypproject/screens/home_screen.dart';
+import 'package:fypproject/screens/report_screen.dart';
 import 'package:fypproject/utils/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart';
 
 class UploadDiagnosisScreen extends StatefulWidget {
@@ -21,74 +27,70 @@ class _UploadDiagnosisScreenState extends State<UploadDiagnosisScreen>
   bool _showResults = false;
   File? _selectImage;
   bool _isSelectImage = false;
-  // late AnimationController _progressController;
-  // late AnimationController _resultController;
-  // late Animation<double> _progressAnimation;
-  // late Animation<double> _fadeAnimation;
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> postData(UploadModel uploadData) async {
-    try {
-      String url = "http://192.168.0.106:3000/api/data/image"; // backend route
-      Uri uri = Uri.parse(url);
-
-      var request = http.MultipartRequest('POST', uri);
-
-      // Fields
-      request.fields['title'] = uploadData.title ?? '';
-      request.fields['description'] = uploadData.description ?? '';
-
-      // File
-      if (uploadData.image != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'image', // backend me jo field name hai
-            uploadData.image!.path,
-            filename: basename(uploadData.image!.path),
-          ),
-        );
-      }
-
-      // Send request
-      var response = await request.send();
-
-      if (response.statusCode == 201) {
-        print('Image uploaded successfully!');
-      } else {
-        print('Upload failed with status: ${response.statusCode}');
-      }
-    } catch (e) {
-      print("Error: $e");
-    }
+  String generate8DigitNumber() {
+    final random = Random();
+    return (10000000 + random.nextInt(90000000)).toString();
   }
 
-  // // Dummy diagnosis results
-  final Map<String, dynamic> _diagnosisResults = {
-    'cadDetected': true,
-    'confidence': 0.87,
-    'riskLevel': 'High',
-    'affectedVessels': ['LAD', 'RCA'],
-    'stenosis': '75-85%',
-  };
+  Future<void> postModel(PostData postData) async {
+    if (postData.image == null) return;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _progressController = AnimationController(
-  //     duration: const Duration(seconds: 3),
-  //     vsync: this,
-  //   );
-  //   _resultController = AnimationController(
-  //     duration: const Duration(milliseconds: 800),
-  //     vsync: this,
-  //   );
-  //   _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-  //     CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-  //   );
-  //   _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-  //     CurvedAnimation(parent: _resultController, curve: Curves.easeInOut),
-  //   );
-  // }
+    setState(() {
+      _isAnalyzing = true; // analysis start
+    });
+
+    try {
+      Uri uri = Uri.parse(APIs.modelUrl);
+      var request = http.MultipartRequest('POST', uri);
+
+      // Attach image
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          postData.image!.path,
+          filename: basename(postData.image!.path),
+        ),
+      );
+
+      // Attach fields
+      request.fields.addAll(postData.toFields());
+
+      // Send request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final uploadData = PdfModel.fromJson(
+          Map<String, dynamic>.from(jsonDecode(response.body)),
+        );
+
+        // ❗ purana report hatao
+        HomeScreen.searchList.clear();
+
+        // ❗ naya report add karo
+        HomeScreen.searchList.add(uploadData);
+        // HomeScreen.searchList?.add(uploadData);
+        setState(() {
+          _showResults = true; // show button visible
+        });
+        // Print response
+        print("✅ Upload Success");
+        print("Patient ID: ${uploadData.patientId}");
+        print("Severity Label: ${uploadData.severity?.severityLabel}");
+        print("XAI Images: ${uploadData.files?.xai}");
+      } else {
+        print("❌ Upload failed with status: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("⚠ Error occurred: $e");
+    } finally {
+      setState(() {
+        _isAnalyzing = false; // analysis done
+      });
+    }
+  }
 
   Future<void> selectImageFucntion() async {
     final XFile? image = await _picker.pickImage(
@@ -103,81 +105,70 @@ class _UploadDiagnosisScreenState extends State<UploadDiagnosisScreen>
     }
   }
 
-  // @override
-  // void dispose() {
-  //   _progressController.dispose();
-  //   _resultController.dispose();
-  //   super.dispose();
-  // }
-
-  // void _selectImage() {
-  //   setState(() {
-  //     _isSelectImage = true;
-  //     _selectedImagePath = 'assets/images/sample_angiogram.jpg';
-  //   });
-  // }
-
-  // void _analyzeImage() async {
-  //   setState(() {
-  //     _isAnalyzing = true;
-  //     _showResults = false;
-  //   });
-
-  //   _progressController.forward();
-
-  //   // Simulate AI analysis
-  //   await Future.delayed(const Duration(seconds: 3));
-
-  //   setState(() {
-  //     _isAnalyzing = false;
-  //     _showResults = true;
-  //   });
-
-  //   _resultController.forward();
-  // }
-
-  // void _resetAnalysis() {
-  //   setState(() {
-  //     _isSelectImage = false;
-  //     _isAnalyzing = false;
-  //     _showResults = false;
-  //     // _selectedImagePath = null;
-  //   });
-  //   _progressController.reset();
-  //   _resultController.reset();
-  // }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Upload & Diagnosis'),
-        backgroundColor: AppColors.primaryBlue,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Upload Section
-            _buildUploadSection(),
-            const SizedBox(height: 20),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Upload & Diagnosis',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: AppColors.primaryBlue,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Upload Section
+              _buildUploadSection(),
+              const SizedBox(height: 20),
 
-            // // Image Preview Section
-            if (_isSelectImage) _buildImagePreviewSection(),
-            if (_isSelectImage) const SizedBox(height: 20),
+              // // Image Preview Section
+              if (_isSelectImage) _buildImagePreviewSection(),
+              if (_isSelectImage) const SizedBox(height: 20),
 
-            // // Analysis Section
-            if (_isSelectImage) _buildAnalysisSection(),
-            // if (_isAnalyzing) const SizedBox(height: 20),
+              // // Analysis Section
+              if (_isSelectImage) _buildAnalysisSection(),
+              if (_showResults) SizedBox(height: 20),
 
-            // // Progress Section
-            // if (_isAnalyzing) _buildProgressSection(),
-            // if (_showResults) const SizedBox(height: 20),
+              if (_showResults)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) =>
+                            ReportScreen(pdfData: HomeScreen.searchList.first),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.visibility),
+                  label: Text("Show Report"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.successGreen,
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
 
-            // Results Section
-            // if (_showResults) _buildResultsSection(),
-          ],
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _selectImage = null;
+                    _isSelectImage = false;
+                    _showResults = false;
+                  });
+
+                  // ❗ old report delete
+                  HomeScreen.searchList.clear();
+                },
+                icon: Icon(Icons.refresh),
+                label: Text("New Analysis"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -364,334 +355,73 @@ class _UploadDiagnosisScreenState extends State<UploadDiagnosisScreen>
             ),
           ),
           const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {
-              postData(
-                UploadModel(
-                  title: "new",
-                  description: "image",
-                  image: _selectImage,
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _isAnalyzing
+                    ? null
+                    : () {
+                        final pId = generate8DigitNumber;
+                        postModel(
+                          PostData(
+                            patientId: pId.toString(),
+                            runPdf: false,
+                            runXai: true,
+                            scoreThr: 0.4,
+                            image: _selectImage,
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.analytics),
+                label: Text(_isAnalyzing ? 'Analyzing...' : 'Start Analysis'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.medicalRed,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
-              );
-              setState(() {
-                _selectImage = null;
-                _isSelectImage = false;
-              });
-            },
-            //  _isAnalyzing ? null : _analyzeImage,
-            icon: const Icon(Icons.analytics),
-            label: Text(_isAnalyzing ? 'Analyzing...' : 'Start Analysis'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.medicalRed,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
+              ),
+
+              if (_isAnalyzing)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
           ),
+
+          // ElevatedButton.icon(
+          //   onPressed: () {
+          //     postModel(
+          //       PostData(
+          //         patientId: "kashif",
+          //         runPdf: false,
+          //         runXai: true,
+          //         scoreThr: 0.4,
+          //         image: _selectImage,
+          //       ),
+          //     );
+          //     setState(() {
+          //       _selectImage = null;
+          //       _isSelectImage = false;
+          //     });
+          //   },
+          //   //  _isAnalyzing ? null : _analyzeImage,
+          //   icon: const Icon(Icons.analytics),
+          //   label: Text(_isAnalyzing ? 'Analyzing...' : 'Start Analysis'),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: AppColors.medicalRed,
+          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          //   ),
+          // ),
         ],
       ),
     );
   }
-
-  // Widget _buildProgressSection() {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(16),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: AppColors.shadowColor,
-  //           blurRadius: 8,
-  //           offset: const Offset(0, 2),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       children: [
-  //         Text(
-  //           'AI Analysis in Progress',
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 18,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.darkGray,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 20),
-  //         AnimatedBuilder(
-  //           animation: _progressAnimation,
-  //           builder: (context, child) {
-  //             return Column(
-  //               children: [
-  //                 LinearProgressIndicator(
-  //                   value: _progressAnimation.value,
-  //                   backgroundColor: AppColors.lightGray,
-  //                   valueColor: AlwaysStoppedAnimation<Color>(
-  //                     AppColors.primaryBlue,
-  //                   ),
-  //                 ),
-  //                 const SizedBox(height: 12),
-  //                 Text(
-  //                   '${(_progressAnimation.value * 100).toInt()}% Complete',
-  //                   style: GoogleFonts.roboto(
-  //                     fontSize: 14,
-  //                     color: AppColors.mediumGray,
-  //                   ),
-  //                 ),
-  //               ],
-  //             );
-  //           },
-  //         ),
-  //         const SizedBox(height: 16),
-  //         Text(
-  //           'Processing with ResNet50 neural network...',
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 12,
-  //             color: AppColors.mediumGray,
-  //             fontStyle: FontStyle.italic,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildResultsSection() {
-  //   return AnimatedBuilder(
-  //     animation: _fadeAnimation,
-  //     builder: (context, child) {
-  //       return Opacity(
-  //         opacity: _fadeAnimation.value,
-  //         child: Column(
-  //           children: [
-  //             // Main Result Card
-  //             Container(
-  //               width: double.infinity,
-  //               padding: const EdgeInsets.all(20),
-  //               decoration: BoxDecoration(
-  //                 gradient: LinearGradient(
-  //                   begin: Alignment.topLeft,
-  //                   end: Alignment.bottomRight,
-  //                   colors: [
-  //                     _diagnosisResults['cadDetected']
-  //                         ? AppColors.medicalRed.withOpacity(0.1)
-  //                         : AppColors.successGreen.withOpacity(0.1),
-  //                     Colors.white,
-  //                   ],
-  //                 ),
-  //                 borderRadius: BorderRadius.circular(16),
-  //                 border: Border.all(
-  //                   color: _diagnosisResults['cadDetected']
-  //                       ? AppColors.medicalRed.withOpacity(0.3)
-  //                       : AppColors.successGreen.withOpacity(0.3),
-  //                   width: 2,
-  //                 ),
-  //               ),
-  //               child: Column(
-  //                 children: [
-  //                   Icon(
-  //                     _diagnosisResults['cadDetected']
-  //                         ? Icons.warning_amber
-  //                         : Icons.check_circle,
-  //                     size: 48,
-  //                     color: _diagnosisResults['cadDetected']
-  //                         ? AppColors.medicalRed
-  //                         : AppColors.successGreen,
-  //                   ),
-  //                   const SizedBox(height: 12),
-  //                   Text(
-  //                     _diagnosisResults['cadDetected']
-  //                         ? 'CAD Detected'
-  //                         : 'No CAD Detected',
-  //                     style: GoogleFonts.roboto(
-  //                       fontSize: 24,
-  //                       fontWeight: FontWeight.bold,
-  //                       color: _diagnosisResults['cadDetected']
-  //                           ? AppColors.medicalRed
-  //                           : AppColors.successGreen,
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 8),
-  //                   Text(
-  //                     'Confidence: ${(_diagnosisResults['confidence'] * 100).toInt()}%',
-  //                     style: GoogleFonts.roboto(
-  //                       fontSize: 16,
-  //                       color: AppColors.darkGray,
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             const SizedBox(height: 16),
-
-  //             // Detailed Results
-  //             if (_diagnosisResults['cadDetected']) _buildDetailedResults(),
-  //             const SizedBox(height: 16),
-
-  //             // Grad-CAM Visualization Placeholder
-  //             _buildGradCAMSection(),
-  //             const SizedBox(height: 20),
-
-  //             // Action Buttons
-  //             Row(
-  //               children: [
-  //                 Expanded(
-  //                   child: ElevatedButton.icon(
-  //                     onPressed: () {
-  //                       // NavigationService.navigateT  o('/report');
-  //                     },
-  //                     icon: const Icon(Icons.description),
-  //                     label: const Text('View Report'),
-  //                     style: ElevatedButton.styleFrom(
-  //                       backgroundColor: AppColors.primaryBlue,
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 const SizedBox(width: 12),
-  //                 Expanded(
-  //                   child: ElevatedButton.icon(
-  //                     onPressed: _resetAnalysis,
-  //                     icon: const Icon(Icons.refresh),
-  //                     label: const Text('New Analysis'),
-  //                     style: ElevatedButton.styleFrom(
-  //                       backgroundColor: AppColors.mediumGray,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  // Widget _buildDetailedResults() {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(12),
-  //       border: Border.all(color: AppColors.lightGray, width: 1),
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           'Detailed Analysis',
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 16,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.darkGray,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         _buildResultRow('Risk Level', _diagnosisResults['riskLevel']),
-  //         _buildResultRow('Stenosis', _diagnosisResults['stenosis']),
-  //         _buildResultRow(
-  //           'Affected Vessels',
-  //           _diagnosisResults['affectedVessels'].join(', '),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildResultRow(String label, String value) {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(vertical: 4),
-  //     child: Row(
-  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //       children: [
-  //         Text(
-  //           label,
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 14,
-  //             color: AppColors.mediumGray,
-  //           ),
-  //         ),
-  //         Text(
-  //           value,
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 14,
-  //             fontWeight: FontWeight.w600,
-  //             color: AppColors.darkGray,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildGradCAMSection() {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(16),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: AppColors.shadowColor,
-  //           blurRadius: 8,
-  //           offset: const Offset(0, 2),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           'Grad-CAM Heatmap Visualization',
-  //           style: GoogleFonts.roboto(
-  //             fontSize: 16,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.darkGray,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         Container(
-  //           width: double.infinity,
-  //           height: 150,
-  //           decoration: BoxDecoration(
-  //             gradient: LinearGradient(
-  //               begin: Alignment.topLeft,
-  //               end: Alignment.bottomRight,
-  //               colors: [
-  //                 AppColors.medicalRed.withOpacity(0.1),
-  //                 AppColors.warningOrange.withOpacity(0.1),
-  //                 AppColors.lightGray,
-  //               ],
-  //             ),
-  //             borderRadius: BorderRadius.circular(12),
-  //             border: Border.all(color: AppColors.lightGray, width: 1),
-  //           ),
-  //           child: Column(
-  //             mainAxisAlignment: MainAxisAlignment.center,
-  //             children: [
-  //               Icon(Icons.visibility, size: 32, color: AppColors.mediumGray),
-  //               const SizedBox(height: 8),
-  //               Text(
-  //                 'Explainability Heatmap',
-  //                 style: GoogleFonts.roboto(
-  //                   fontSize: 14,
-  //                   fontWeight: FontWeight.w600,
-  //                   color: AppColors.mediumGray,
-  //                 ),
-  //               ),
-  //               Text(
-  //                 'Shows AI focus areas',
-  //                 style: GoogleFonts.roboto(
-  //                   fontSize: 12,
-  //                   color: AppColors.mediumGray,
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }

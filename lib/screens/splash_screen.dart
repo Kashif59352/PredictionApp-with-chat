@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fypproject/api/storage.dart';
 import 'package:fypproject/screens/auth/login_screen.dart';
+import 'package:fypproject/screens/home_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 
@@ -33,13 +36,19 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animationController.forward();
-
     // Navigate to home screen after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(
+        SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+      );
       if (mounted) {
+        final result = Storage().isLogin;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (ctx) => LoginScreen()),
+          MaterialPageRoute(
+            builder: (ctx) => result ? HomeScreen() : LoginScreen(),
+          ),
         );
       }
     });

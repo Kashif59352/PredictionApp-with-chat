@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fypproject/module/upload_model.dart';
+import 'package:fypproject/module/upload_data/upload_model.dart';
 
 class Dami extends StatefulWidget {
   final UploadModel user;
@@ -21,7 +21,11 @@ class _DamiState extends State<Dami> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             image: DecorationImage(
-              image: NetworkImage(widget.user.imageUrl ?? ""),
+              image: NetworkImage(
+                widget.user.files?.xai?.isNotEmpty == true
+                    ? widget.user.files!.xai![0]
+                    : "https://via.placeholder.com/300x400", // fallback image
+              ),
               fit: BoxFit.cover,
             ),
           ),
